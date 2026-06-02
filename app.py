@@ -1,30 +1,29 @@
 import streamlit as st
 import pandas as pd
+import joblib
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from sklearn.model_selection import train_test_split
+# =====================
 
-from sklearn.ensemble import (
-RandomForestRegressor,
-GradientBoostingRegressor,
-StackingRegressor
-)
+# PAGE
 
-from sklearn.tree import DecisionTreeRegressor
-
-from sklearn.linear_model import LinearRegression
-
-from sklearn.metrics import r2_score
+# =====================
 
 st.set_page_config(
 
-page_title="Flight Price Prediction",
+page_title="Insurance Cost Prediction",
 
-page_icon="✈️",
+page_icon="💰",
 
 layout="wide"
 )
+
+# =====================
+
+# CSS
+
+# =====================
 
 st.markdown("""
 
@@ -40,21 +39,11 @@ background:#0E1117;
 
 text-align:center;
 
-font-size:40px;
+font-size:42px;
 
 font-weight:bold;
 
 color:#00F5FF;
-
-}
-
-.box{
-
-padding:20px;
-
-background:#111827;
-
-border-radius:15px;
 
 }
 
@@ -66,9 +55,9 @@ padding:25px;
 
 border-radius:15px;
 
-text-align:center;
+font-size:28px;
 
-font-size:30px;
+text-align:center;
 
 color:white;
 
@@ -86,28 +75,48 @@ color:white;
 
 </style>
 
-""",unsafe_allow_html=True)
+""",
+
+unsafe_allow_html=True
+
+)
+
+# =====================
+
+# TITLE
+
+# =====================
 
 st.markdown(
-"<p class='title'>✈️ Flight Price Prediction Using Stacking Regressor</p>",
+
+"<p class='title'>💰 Insurance Cost Prediction</p>",
+
 unsafe_allow_html=True
 )
 
-# ==================
+# =====================
 
 # LOAD
 
-# ==================
+# =====================
 
-df=pd.read_csv(
-"data/Clean_Dataset.csv"
+df = pd.read_csv(
+"data/insurance.csv"
 )
 
-df.drop(
-["Unnamed: 0","flight"],
-axis=1,
-inplace=True
+model = joblib.load(
+"stacking_regressor.pkl"
 )
+
+cols = joblib.load(
+"model_columns.pkl"
+)
+
+# =====================
+
+# PREVIEW
+
+# =====================
 
 st.subheader(
 "Dataset Preview"
@@ -117,6 +126,12 @@ st.dataframe(
 df.head()
 )
 
+# =====================
+
+# STATS
+
+# =====================
+
 st.subheader(
 "Statistics"
 )
@@ -125,25 +140,26 @@ st.dataframe(
 df.describe()
 )
 
-st.subheader(
-"Missing Values"
-)
-
-st.dataframe(
-df.isnull().sum()
-)
-
-# ==================
+# =====================
 
 # VISUALS
 
-# ==================
+# =====================
+
+st.subheader(
+"Insurance Charges"
+)
 
 fig1,ax1=plt.subplots()
 
 sns.histplot(
-df["price"],
-bins=50,
+
+df["charges"],
+
+bins=30,
+
+kde=True,
+
 ax=ax1
 )
 
@@ -151,176 +167,90 @@ st.pyplot(
 fig1
 )
 
-fig2,ax2=plt.subplots()
-
-sns.countplot(
-
-y=df["airline"],
-
-order=df["airline"].value_counts().index,
-
-ax=ax2
+st.subheader(
+"Correlation"
 )
 
-st.pyplot(
-fig2
-)
-
-encoded=pd.get_dummies(
+enc=pd.get_dummies(
 df,
 drop_first=True
 )
 
-fig3,ax3=plt.subplots(
+fig2,ax2=plt.subplots(
 figsize=(10,6)
 )
 
 sns.heatmap(
 
-encoded.corr(),
+enc.corr(),
 
 cmap="coolwarm",
 
-ax=ax3
+ax=ax2
 )
 
 st.pyplot(
-fig3
-)
+fig2)
 
-# ==================
-
-# MODEL
-
-# ==================
-
-@st.cache_resource
-
-def train():
-    X = encoded.drop(
-        "price",
-        axis=1
-    )
-
-    y = encoded["price"]
-
-    x_train,x_test,y_train,y_test = train_test_split(
-        X,
-        y,
-        test_size=0.2,
-        random_state=42
-    )
-
-    model = StackingRegressor(
-        estimators=[
-            (
-                "rf",
-                RandomForestRegressor(n_estimators=50)
-            ),
-            (
-                "gb",
-                GradientBoostingRegressor()
-            ),
-            (
-                "dt",
-                DecisionTreeRegressor(max_depth=10)
-            )
-        ],
-        final_estimator=LinearRegression(),
-        n_jobs=-1
-    )
-
-    model.fit(x_train, y_train)
-
-    score = r2_score(y_test, model.predict(x_test))
-
-    return model, score, X.columns
-
-model,score,columns=train()
-
-st.metric(
-"R² Score",
-f"{score:.4f}"
-)
-
-# ==================
+# =====================
 
 # INPUT
 
-# ==================
+# =====================
 
 st.subheader(
-"Predict Price"
+"Predict Insurance Charges"
 )
 
-airline=st.selectbox(
-"Airline",
-df.airline.unique()
+age=st.slider(
+"Age",
+18,
+100,
+30
 )
 
-source=st.selectbox(
-"Source",
-df.source_city.unique()
+sex=st.selectbox(
+"Sex",
+df["sex"].unique()
 )
 
-depart=st.selectbox(
-"Departure",
-df.departure_time.unique()
+bmi=st.slider(
+"BMI",
+10.0,
+60.0,
+25.0
 )
 
-stops=st.selectbox(
-"Stops",
-df.stops.unique()
+children=st.slider(
+"Children",
+0,
+10,
+1
 )
 
-arrival=st.selectbox(
-"Arrival",
-df.arrival_time.unique()
+smoker=st.selectbox(
+"Smoker",
+df["smoker"].unique()
 )
 
-dest=st.selectbox(
-"Destination",
-df.destination_city.unique()
-)
-
-travel=st.selectbox(
-"Class",
-df["class"].unique()
-)
-
-duration=st.slider(
-"Duration",
-0.0,
-50.0,
-5.0
-)
-
-days=st.slider(
-"Days Left",
-1,
-50,
-10
+region=st.selectbox(
+"Region",
+df["region"].unique()
 )
 
 inp=pd.DataFrame({
 
-"airline":[airline],
+"age":[age],
 
-"source_city":[source],
+"sex":[sex],
 
-"departure_time":[depart],
+"bmi":[bmi],
 
-"stops":[stops],
+"children":[children],
 
-"arrival_time":[arrival],
+"smoker":[smoker],
 
-"destination_city":[dest],
-
-"class":[travel],
-
-"duration":[duration],
-
-"days_left":[days]
+"region":[region]
 
 })
 
@@ -329,18 +259,30 @@ inp
 )
 
 inp=inp.reindex(
-columns=columns,
+columns=cols,
 fill_value=0
 )
 
-if st.button("Predict Price"):
-	pred = model.predict(inp)[0]
+if st.button(
+"Predict Charges"
+):
+    pred=model.predict(
+        inp
+    )[0]
 
-	st.markdown(
-		f"""
-		<div class='predict'>
-		💰 ₹ {pred:,.0f}
-		</div>
-		""",
-		unsafe_allow_html=True,
-	)
+    st.markdown(
+        f"""
+
+<div class='predict'>
+
+💰 Estimated Insurance Cost
+
+<br><br>
+
+$ {pred:,.2f}
+
+</div>
+
+""",
+        unsafe_allow_html=True
+    )
